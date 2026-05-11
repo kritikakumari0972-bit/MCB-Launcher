@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sidebar: #2e2e2e;
+  --color-main-bg: #1e1e1e;
+  --color-text-dim: #aaaaaa;
+  --color-minecraft-green: #187e3f;
+  --color-minecraft-green-hover: #43a047;
+  --font-minecraft: "Minecraft", sans-serif;
+  --font-mcten: "mcten", sans-serif;
+}
+
+
+
+@font-face {
+  font-family: 'Minecraft';
+  src: url('../../../assets/fonts/mcfont.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'mcten';
+  src: url('/fonts/mcten.ttf') format('truetype');
+}
+
+.mc-title {
+  font-family: 'Minecraft';
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.1)) drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06));
+  /* drop-shadow-md */
+}
+
+:root {
+  background-color: var(--color-main-bg);
+  color: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  transition: font-size 0.2s ease-in-out;
+}
+
+:root.big-text {
+  font-size: 20px;
+  /* Default is usually 16px */
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Custom Scrollbar for scrollable content */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Creeper Avatar (Drawing with CSS) */
+.creeper-avatar {
+  background-image: linear-gradient(to bottom,
+      transparent 0px 4px,
+      #000 4px 10px,
+      transparent 10px);
+  position: relative;
+  background-size: 100% 100%;
+}
+
+.creeper-avatar::before,
+.creeper-avatar::after {
+  content: '';
+  position: absolute;
+  background-color: #000;
+}
+
+.creeper-avatar::before {
+  width: 4px;
+  height: 4px;
+  left: 4px;
+  top: 4px;
+}
+
+.creeper-avatar::after {
+  width: 4px;
+  height: 4px;
+  right: 4px;
+  top: 4px;
+}
+
+/* Special Button Style (Minecraft Theme) */
+.play-button {
+  background-image: url('/playbutton.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-color: transparent;
+  color: #ffffff;
+  border: none;
+  padding: 0;
+  font-family: 'mcten', sans-serif;
+  font-size: 25px;
+  cursor: pointer;
+  transition: transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.5);
+  min-width: 250px;
+  height: 60px;
+}
+
+.play-button:hover {
+  transform: scale(1.02);
+  filter: brightness(1.1);
+}
+
+.play-button:active {
+  transform: scale(0.98);
+}
+
+::selection {
+  background-color: #08773d;
+  color: white;
+}
+
+::-moz-selection {
+  background-color: #08773d;
+  color: white;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes menuSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes logoPulse {
+  0% {
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+
+  50% {
+    transform: scale(1.02);
+    filter: brightness(1.2) drop-shadow(0 0 20px rgba(255, 255, 255, 0.3));
+  }
+
+  100% {
+    transform: scale(1);
+    filter: brightness(1) drop-shadow(0 0 0px rgba(255, 255, 255, 0));
+  }
+}
+
+.animate-logo-pulse {
+  animation: logoPulse 3s ease-in-out infinite;
+}
+
+.animate-menu-slide {
+  animation: menuSlideDown 0.25s cubic-bezier(0.2, 0, 0, 1) forwards;
+}

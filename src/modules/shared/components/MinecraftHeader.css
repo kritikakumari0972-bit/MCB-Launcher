@@ -1,0 +1,48 @@
+.minecraft-header {
+  padding: 16px 24px 0 24px;
+  background-color: #1e1e1e;
+}
+
+.game-title {
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0 0 12px 0;
+  letter-spacing: 0.5px;
+}
+
+.tab-nav {
+  display: flex;
+  gap: 24px;
+}
+
+.tab-item {
+  color: #aaaaaa;
+  font-size: 14px;
+  font-weight: 500;
+  padding-bottom: 8px;
+  cursor: pointer;
+  transition: color 0.1s;
+  position: relative;
+}
+
+.tab-item:hover {
+  color: #ffffff;
+}
+
+.tab-item.active {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.tab-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #4CAF50;
+  border-radius: 2px 2px 0 0;
+}

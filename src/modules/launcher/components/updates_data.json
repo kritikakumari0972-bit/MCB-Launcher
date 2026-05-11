@@ -1,0 +1,35 @@
+[
+  {
+    "date": "Thursday, April 30, 2026",
+    "versions": [
+      "Launcher version 1.0.0 (Official Release)"
+    ],
+    "sections": [
+      {
+        "title": "Welcome to the New Launcher!",
+        "items": [
+          "Initial official release of the enhanced Minecraft Launcher system.",
+          "Brand new modern UI with dark mode support and premium aesthetics.",
+          "Integrated **What's New** system to keep track of every update.",
+          "Support for Minecraft Java & Bedrock Edition with profile management."
+        ]
+      },
+      {
+        "title": "Features & Improvements",
+        "items": [
+          "Dynamic video background support for Game Hero sections.",
+          "Improved font rendering for pixel-accurate text displays.",
+          "Advanced log viewer and troubleshooting tools integrated into Settings.",
+          "Optimized game launching process for faster startup times."
+        ]
+      },
+      {
+        "title": "Technical Notes",
+        "items": [
+          "Built using Tauri & React for a lightweight and secure experience.",
+          "Automatic backend synchronization for news and version data."
+        ]
+      }
+    ]
+  }
+]

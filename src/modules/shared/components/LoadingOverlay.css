@@ -1,0 +1,106 @@
+:root {
+    --canvas-size: 120px;
+    --cube-size: 60px;
+    --drop-point: -65px;
+    --neg-cube-size: -60px;
+    --anim-duration: 1.3s;
+}
+
+.loader-canvas {
+    width: var(--canvas-size);
+    height: var(--canvas-size);
+    position: relative;
+    overflow: hidden;
+}
+
+.cube {
+    width: var(--cube-size);
+    height: var(--cube-size);
+    background-color: white;
+    position: absolute;
+}
+
+/* 1. Static Cube */
+.cube-static {
+    left: 0;
+    top: var(--cube-size);
+}
+
+/* 2. Shrinking Cube */
+.shrinking-cube {
+    width: var(--canvas-size);
+    height: var(--canvas-size);
+    left: 0;
+    top: 0;
+    opacity: 0;
+    animation: shrinkingCubeAnim var(--anim-duration) infinite linear;
+}
+
+@keyframes shrinkingCubeAnim {
+    0%, 61.4% { opacity: 0; left: 0; top: 0; }
+    61.5% { opacity: 1; left: 0; top: 0; }
+    76.9% { left: 0; top: 0; }
+    92.3% { left: var(--neg-cube-size); top: var(--cube-size); opacity: 1; }
+    100% { opacity: 0; left: var(--neg-cube-size); top: var(--cube-size); }
+}
+
+/* 3. Drop 1 */
+.drop-1 {
+    left: var(--cube-size);
+    top: var(--drop-point);
+    animation: drop1Anim var(--anim-duration) infinite linear;
+}
+
+@keyframes drop1Anim {
+    0% { top: var(--drop-point); opacity: 1; }
+    15.4% { top: var(--cube-size); opacity: 1; }
+    61.5% { top: var(--cube-size); opacity: 1; }
+    61.6%, 100% { top: var(--cube-size); opacity: 0; }
+}
+
+/* 4. Drop 2 */
+.drop-2 {
+    left: 0;
+    top: var(--drop-point);
+    animation: drop2Anim var(--anim-duration) infinite linear;
+}
+
+@keyframes drop2Anim {
+    0%, 23% { top: var(--drop-point); opacity: 1; }
+    46.1% { top: 0; opacity: 1; }
+    61.5% { top: 0; opacity: 1; }
+    61.6%, 100% { top: 0; opacity: 0; }
+}
+
+/* 5. Drop 3 */
+.drop-3 {
+    left: var(--cube-size);
+    top: var(--drop-point);
+    animation: drop3Anim var(--anim-duration) infinite linear;
+}
+
+@keyframes drop3Anim {
+    0%, 30.7% { top: var(--drop-point); opacity: 1; }
+    53.8% { top: 0; opacity: 1; }
+    61.5% { top: 0; opacity: 1; }
+    61.6%, 100% { top: 0; opacity: 0; }
+}
+
+.loading-dot {
+    animation: dotJump 1.4s infinite ease-in-out;
+}
+
+@keyframes dotJump {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+        opacity: 0.3;
+    }
+    40% {
+        transform: translateY(-8px);
+        opacity: 1;
+    }
+    60% {
+        transform: translateY(-4px);
+        opacity: 0.8;
+    }
+}
