@@ -56,10 +56,10 @@ function App() {
       const { listen } = await import("@tauri-apps/api/event");
       await listen("single-instance-auth", (event: any) => {
         const args = event.payload as string[];
-        console.log("📨 [SingleInstance] Received args:", args);
+        console.log("[SingleInstance] Received args:", args);
         args.forEach((arg) => {
           if (arg.startsWith("lflauncher://auth")) {
-            console.log("✅ [SingleInstance] Auth link detected");
+            console.log("[SingleInstance] Auth link detected");
             try {
               const urlObj = new URL(arg);
               const name = urlObj.searchParams.get("name") || "Player";
@@ -79,7 +79,7 @@ function App() {
     // Debug: Press F8 to force login
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "F8") {
-        console.log("🛠️ [Debug] F8 pressed: Forcing login...");
+        console.log("[Debug] F8 pressed: Forcing login...");
         handleLogin();
       }
     };
@@ -148,11 +148,11 @@ function App() {
             const syncedUser: any = await invoke("sync_user_from_backend");
             setUserData(syncedUser);
           } catch (syncErr) {
-            console.warn("⚠️ [SecureAuth] Backend sync failed:", syncErr);
+            console.warn("[SecureAuth] Backend sync failed:", syncErr);
           }
         }
       } catch (err) {
-        console.error("❌ [SecureAuth] INTEGRITY CHECK FAILED:", err);
+        console.error("[SecureAuth] INTEGRITY CHECK FAILED:", err);
         await invoke("logout_secure_user");
         setIsLoggedIn(false);
         setShowSecurityAlert(true);
@@ -180,7 +180,7 @@ function App() {
         setIsLoggedIn(true);
         navigate("/dashboard");
       } catch (err) {
-        console.error("❌ [SecureAuth] Failed to save secure data:", err);
+        console.error("[SecureAuth] Failed to save secure data:", err);
       }
     }, 600);
   };
