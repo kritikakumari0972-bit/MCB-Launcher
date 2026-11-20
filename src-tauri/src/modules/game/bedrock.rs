@@ -35,6 +35,70 @@ pub struct BedrockProgress {
     pub status: String,
 }
 
+fn validate_path_component(value: &str, label: &str) -> Result<(), String> {
+    // These values become individual Windows filesystem path components.
+    // Keep the accepted character set intentionally small to prevent traversal,
+    // drive-prefix, alternate-stream, and command-interpolation surprises.
+    if value.is_empty()
+        || value.len() > 120
+        || value.trim() != value
+        || value.ends_with('.')
+        || value == "."
+        || value == ".."
+        || !value.chars().all(|c| {
+            c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | ' ' | '(' | ')' | '[' | ']')
+        })
+    {
+        return Err(format!("Invalid {}: use a simple name without path characters.", label));
+    }
+
+    let device_name = value
+        .split('.')
+        .next()
+        .unwrap_or(value)
+        .to_ascii_uppercase();
+    if matches!(
+        device_name.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL"
+            | "COM1" | "COM2" | "COM3" | "COM4" | "COM5" | "COM6" | "COM7" | "COM8" | "COM9"
+            | "LPT1" | "LPT2" | "LPT3" | "LPT4" | "LPT5" | "LPT6" | "LPT7" | "LPT8" | "LPT9"
+    ) {
+        return Err(format!("Invalid {}: reserved Windows device name.", label));
+    }
+
+    Ok(())
+}
+
+fn validate_download_url(value: &str) -> Result<reqwest::Url, String> {
+    let url = reqwest::Url::parse(value)
+        .map_err(|_| "The package download URL is invalid.".to_string())?;
+    let host = url
+        .host_str()
+        .ok_or_else(|| "The package download URL has no host.".to_string())?
+        .to_ascii_lowercase();
+
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err("The package download URL must not contain embedded credentials.".to_string());
+    }
+
+    if host == "localhost"
+        || host.ends_with(".localhost")
+        || host.parse::<std::net::IpAddr>().is_ok()
+    {
+        return Err("The package download URL must use a public hostname.".to_string());
+    }
+
+    // Microsoft Update can return this specific legacy delivery endpoint over
+    // HTTP. All other package sources must use HTTPS.
+    let microsoft_update_http = url.scheme() == "http"
+        && host == "tlu.dl.delivery.mp.microsoft.com";
+    if url.scheme() != "https" && !microsoft_update_http {
+        return Err("Package downloads must use HTTPS.".to_string());
+    }
+
+    Ok(url)
+}
+
 #[command]
 pub async fn get_bedrock_versions() -> std::result::Result<serde_json::Value, String> {
     let app_data = std::env::var("APPDATA").map_err(|e| e.to_string())?;
@@ -283,7 +347,7 @@ async fn get_uwp_url(app: &AppHandle, update_id: &str, revision: i32, token: &st
         created, expires, token, update_id, if revision < 1 { 1 } else { revision }
     );
 
-    let _ = app.emit("game-log", format!("[WU] Full SOAP request:\n{}", soap_request));
+    let _ = app.emit("game-log", "[WU] SOAP request prepared (authentication data omitted from logs).");
 
     let _ = app.emit("game-log", "[WU] Sending SOAP request to Microsoft...");
     let response = client.post("https://fe3.delivery.mp.microsoft.com/ClientWebService/client.asmx/secured")
@@ -292,12 +356,16 @@ async fn get_uwp_url(app: &AppHandle, update_id: &str, revision: i32, token: &st
         .body(soap_request)
         .send()
         .await
-        .map_err(|e| e.to_string())?
-        .text()
-        .await
         .map_err(|e| e.to_string())?;
+    let response_status = response.status();
+    let response = response.text().await.map_err(|e| e.to_string())?;
 
-    let _ = app.emit("game-log", format!("[WU] Response from Microsoft:\n{}", response));
+    // The SOAP body can contain time-limited signed package URLs. Never write
+    // the response body or resolved URLs to launcher logs.
+    let _ = app.emit(
+        "game-log",
+        format!("[WU] Microsoft Update response received (HTTP {}, {} bytes).", response_status, response.len()),
+    );
     let mut urls = Vec::new();
     let mut search_idx = 0;
     while let Some(start) = response[search_idx..].find("<Url>") {
@@ -313,9 +381,7 @@ async fn get_uwp_url(app: &AppHandle, update_id: &str, revision: i32, token: &st
     }
 
     let _ = app.emit("game-log", format!("[WU] Found {} URLs in response.", urls.len()));
-    for u in &urls {
-        let _ = app.emit("game-log", format!("[WU] Available URL: {}", u));
-    }
+    // Do not log URLs: delivery links may contain temporary access signatures.
 
     let best_url = urls.iter()
         .find(|u| u.starts_with("http://tlu.dl.delivery.mp.microsoft.com/"))
@@ -323,7 +389,7 @@ async fn get_uwp_url(app: &AppHandle, update_id: &str, revision: i32, token: &st
         .or_else(|| urls.first().cloned());
 
     if let Some(url) = best_url {
-        let _ = app.emit("game-log", format!("[WU] Selected download URL: {}", url));
+        let _ = app.emit("game-log", "[WU] Selected a Microsoft delivery URL (value redacted).");
         Ok(url)
     } else {
         let _ = app.emit("game-log", "[WU] Failed to find a valid delivery URL in SOAP response.");
@@ -349,6 +415,11 @@ pub async fn install_bedrock_version(
     package_type: String,
     revision: Option<i32>
 ) -> std::result::Result<(), String> {
+    if package_type != "uwp" && package_type != "gdk" {
+        return Err("Unsupported Bedrock package type. Expected 'uwp' or 'gdk'.".to_string());
+    }
+    validate_path_component(&id, "package identifier")?;
+
     let mut download_url = url.unwrap_or_default();
     
     if download_url.is_empty() && (package_type == "uwp" || package_type == "gdk") {
@@ -357,9 +428,14 @@ pub async fn install_bedrock_version(
         emit_bedrock_progress(&app, "Resolving download URL...", 5.0, "downloading");
         download_url = get_uwp_url(&app, &id, revision.unwrap_or(1), &token).await?;
     }
-    
+    if download_url.is_empty() {
+        return Err("No package download URL was provided or resolved.".to_string());
+    }
+    download_url = validate_download_url(&download_url)?.to_string();
+
     let app_data = std::env::var("APPDATA").map_err(|e| e.to_string())?;
     let folder = folder_name.unwrap_or_else(|| id.clone());
+    validate_path_component(&folder, "installation folder")?;
     let bedrock_dir = Path::new(&app_data).join("lflauncher").join("bedrock_versions").join(&folder);
     
     // Check if already exists and is valid
@@ -375,7 +451,7 @@ pub async fn install_bedrock_version(
 
     if !bedrock_dir.exists() {
         let temp_dir = Path::new(&app_data).join("lflauncher").join("temp");
-        let _ = fs::create_dir_all(&temp_dir);
+        fs::create_dir_all(&temp_dir).map_err(|e| format!("Failed to create temporary folder: {}", e))?;
         
         let file_ext = if package_type == "uwp" { ".appx" } else { ".msixvc" };
         let temp_path = temp_dir.join(format!("{}{}", id, file_ext));
@@ -426,12 +502,23 @@ pub async fn install_bedrock_version(
             for i in 0..total_files {
                 {
                     let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-                    let outpath = bedrock_dir.join(file.name());
-                    if file.name().ends_with('/') {
-                        let _ = fs::create_dir_all(&outpath);
+                    let entry_name = file.name().to_string();
+                    let relative_path = file.enclosed_name().ok_or_else(|| {
+                        "The Bedrock package contains an unsafe archive path.".to_string()
+                    })?;
+                    if relative_path.as_os_str().is_empty() {
+                        return Err("The Bedrock package contains an empty archive path.".to_string());
+                    }
+                    if file.unix_mode().map(|mode| mode & 0o170000 == 0o120000).unwrap_or(false) {
+                        return Err("The Bedrock package contains a symbolic-link entry.".to_string());
+                    }
+
+                    let outpath = bedrock_dir.join(relative_path);
+                    if file.is_dir() || entry_name.ends_with('/') {
+                        fs::create_dir_all(&outpath).map_err(|e| e.to_string())?;
                     } else {
-                        if let Some(p) = outpath.parent() {
-                            let _ = fs::create_dir_all(&p);
+                        if let Some(parent) = outpath.parent() {
+                            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
                         }
                         let mut outfile = fs::File::create(&outpath).map_err(|e| e.to_string())?;
                         std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
@@ -448,7 +535,8 @@ pub async fn install_bedrock_version(
             
             // Register GDK
             emit_bedrock_progress(&app, "Registering GDK with Windows...", 90.0, "registering");
-            let ps_cmd = format!("Add-AppxPackage -Path '{}'", msixvc_file.to_string_lossy());
+            let escaped_path = msixvc_file.to_string_lossy().replace('\'', "''");
+            let ps_cmd = format!("Add-AppxPackage -Path '{}'", escaped_path);
             let _ = std::process::Command::new("powershell")
                 .args(["-NoProfile", "-Command", &ps_cmd])
                 .output();
@@ -589,4 +677,38 @@ pub async fn play_bedrock_version(app: AppHandle, path: String, package_family: 
 
     emit_bedrock_progress(&app, "Game launched", 100.0, "success");
     Ok(())
+}
+
+
+#[cfg(test)]
+mod bedrock_security_tests {
+    use super::{validate_download_url, validate_path_component};
+
+    #[test]
+    fn accepts_normal_minecraft_version_and_update_ids() {
+        assert!(validate_path_component("1.21.80.03", "id").is_ok());
+        assert!(validate_path_component("28520974-CE92-4F36-A219-3F255AF7E61E", "id").is_ok());
+        assert!(validate_path_component("Bedrock Preview 1.21", "folder").is_ok());
+    }
+
+    #[test]
+    fn rejects_path_traversal_and_windows_device_names() {
+        for value in ["..", ".", "../outside", "..\\outside", "C:outside", "NUL", "COM1.txt"] {
+            assert!(validate_path_component(value, "id").is_err(), "accepted unsafe value: {value}");
+        }
+    }
+
+    #[test]
+    fn requires_https_for_downloads_except_microsofts_legacy_delivery_host() {
+        assert!(validate_download_url("https://download.microsoft.com/package.appx").is_ok());
+        assert!(validate_download_url("http://example.com/package.appx").is_err());
+        assert!(validate_download_url("file:///C:/package.appx").is_err());
+        assert!(validate_download_url("https://127.0.0.1/package.appx").is_err());
+        assert!(validate_download_url("http://tlu.dl.delivery.mp.microsoft.com/package.appx").is_ok());
+    }
+
+    #[test]
+    fn rejects_urls_with_embedded_credentials() {
+        assert!(validate_download_url("https://user:password@example.com/package.appx").is_err());
+    }
 }
